@@ -11,6 +11,7 @@ document.body.appendChild(renderer.domElement);
 
 const cam = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight);
 cam.position.z = size * sizeMultiplier;
+
 const control = new OrbitControls(cam, renderer.domElement);
 control.enablePan = false;
 control.enableDamping = true;
@@ -33,6 +34,7 @@ class KruskalGraph {
     this.initEdges();
     this.encodeSpheres();
     this.kruskal();
+    this.builtEdges();
     scene.add(...this.spheres);
   }
 
@@ -72,41 +74,56 @@ class KruskalGraph {
   kruskal() {
     this.edges = this.edges.sort((e1, e2) => e1.distance - e2.distance);
 
-    const parent = [];
-    const rank = [];
-
-    this.spheres.forEach((sphere, idx) => {
-      parent.push(idx);
-      rank.push(0);
-    });
+    const subsets = this.spheres.map((_, idx) => ({ parent: idx, rank: 0 }));
 
     this.result = [];
 
-    let e = 0;
-    let i = 0;
+    let builtEdgesCount = 0;
     const maxE = this.spheres.length - 1;
+    let i = 0;
 
-    while (e < maxE) {
+    while (builtEdgesCount < maxE) {
       const { src, dst } = this.edges[i++];
 
-      const x = find(parent, src);
-      const y = find(parent, dst);
+      const x = find(subsets, src);
+      const y = find(subsets, dst);
 
       if (x !== y) {
-        e++;
+        builtEdgesCount++;
         this.result.push({ src, dst });
-        union(parent, rank, x, y);
+        union(subsets, x, y);
       }
     }
 
+    function find(subsets, i) {
+      if (subsets[i].parent === i) return i;
+      return find(subsets, subsets[i].parent);
+    }
+
+    function union(subsets, x, y) {
+      const xroot = find(subsets, x);
+      const yroot = find(subsets, y);
+
+      if (subsets[xroot].rank < subsets[yroot].rank) {
+        subsets[xroot].parent = yroot;
+      } else if (subsets[xroot].rank > subsets[yroot].rank) {
+        subsets[yroot].parent = xroot;
+      } else {
+        subsets[yroot].parent = xroot;
+        subsets[xroot].rank++;
+      }
+    }
+  }
+
+  builtEdges() {
     let builtEdges = 0;
+    const maxE = this.spheres.length - 1;
 
     this.result.forEach((edge, idx) => {
       setTimeout(() => {
         const { src, dst } = edge;
         const sphere1 = this.encoding[src];
         const sphere2 = this.encoding[dst];
-
         scene.add(
           new THREE.Line(
             new THREE.BufferGeometry()
@@ -126,30 +143,11 @@ class KruskalGraph {
         );
 
         builtEdges++;
-        if (builtEdges === this.spheres.length - 1) {
+        if (builtEdges === maxE) {
           control.autoRotate = true;
         }
       }, idx * edgesBuildingSpeed);
     });
-
-    function find(parent, i) {
-      if (parent[i] === i) return i;
-      return find(parent, parent[i]);
-    }
-
-    function union(parent, rank, x, y) {
-      const xroot = find(parent, x);
-      const yroot = find(parent, y);
-
-      if (rank[xroot] < rank[yroot]) {
-        parent[xroot] = yroot;
-      } else if (rank[xroot] > rank[yroot]) {
-        parent[yroot] = xroot;
-      } else {
-        parent[yroot] = xroot;
-        rank[xroot]++;
-      }
-    }
   }
 }
 
