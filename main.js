@@ -1,16 +1,12 @@
 import * as THREE from './resources/three.module.js';
 import { OrbitControls } from './resources/OrbitControls.js';
 
-const size = 64;
-const sizeMultiplier = 2;
-const edgesBuildingSpeed = 16;
-
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const cam = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight);
-cam.position.z = size * sizeMultiplier;
+cam.position.z = 120;
 
 const control = new OrbitControls(cam, renderer.domElement);
 control.enablePan = false;
@@ -29,7 +25,12 @@ scene.background = new THREE.CubeTextureLoader().load([
 ]);
 
 class KruskalGraph {
-  constructor() {
+  constructor(size, sizeMultiplier, edgesBuildingSpeed, orbitControl) {
+    this.size = size;
+    this.sizeMultiplier = sizeMultiplier;
+    this.edgesBuildingSpeed = edgesBuildingSpeed;
+    this.orbitControl = orbitControl;
+
     this.initSpheres();
     this.initEdges();
     this.encodeSpheres();
@@ -39,16 +40,16 @@ class KruskalGraph {
   }
 
   initSpheres() {
-    this.spheres = Array(size)
+    this.spheres = Array(this.size)
       .fill(1)
       .map(() => {
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(1, 32, 32),
           new THREE.MeshBasicMaterial({ color: THREE.MathUtils.randFloat(0x000000, 0xffffff) })
         );
-        sphere.position.x = THREE.MathUtils.randFloatSpread(size * sizeMultiplier);
-        sphere.position.y = THREE.MathUtils.randFloatSpread(size * sizeMultiplier);
-        sphere.position.z = THREE.MathUtils.randFloatSpread(size * sizeMultiplier);
+        sphere.position.x = THREE.MathUtils.randFloatSpread(this.size * this.sizeMultiplier);
+        sphere.position.y = THREE.MathUtils.randFloatSpread(this.size * this.sizeMultiplier);
+        sphere.position.z = THREE.MathUtils.randFloatSpread(this.size * this.sizeMultiplier);
         return sphere;
       });
   }
@@ -144,14 +145,14 @@ class KruskalGraph {
 
         builtEdges++;
         if (builtEdges === maxE) {
-          control.autoRotate = true;
+          this.orbitControl.autoRotate = true;
         }
-      }, idx * edgesBuildingSpeed);
+      }, idx * this.edgesBuildingSpeed);
     });
   }
 }
 
-new KruskalGraph();
+new KruskalGraph(64, 2, 16, control);
 
 renderer.setAnimationLoop(() => {
   control.update();
